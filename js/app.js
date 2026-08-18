@@ -102,14 +102,14 @@ function handleFormSubmit(event) {
   const valorStr = document.getElementById('formValor').value;
   const observacao = document.getElementById('formObservacao').value.trim();
 
-  const valor = parseMoneyInput(valorStr);
+  const valorInformado = parseMoneyInput(valorStr);
 
   if (!dataISO) {
     UI.showToast('Informe uma data válida.', 'error');
     return;
   }
-  if (!Number.isFinite(valor) || valor <= 0) {
-    UI.showToast('Informe um valor válido maior que zero (ex: 2,56).', 'error');
+  if (!Number.isFinite(valorInformado) || valorInformado <= 0) {
+    UI.showToast('Informe um valor válido maior que zero.', 'error');
     return;
   }
 
@@ -124,7 +124,18 @@ function handleFormSubmit(event) {
     }
   }
 
-  const dados = { tipo, origem, data: dataISO, valorDolar: valor, observacao };
+  // Missões TikTok são digitadas em Real; convertemos para dólar na hora de
+  // salvar, já que o dólar continua sendo a única moeda de referência interna.
+  let valorDolar = valorInformado;
+  if (origem === Finance.ORIGEM_MISSOES) {
+    if (!AppState.cotacao || !AppState.cotacao.rate) {
+      UI.showToast('Não é possível converter Real para Dólar sem uma cotação. Configure uma cotação primeiro.', 'error');
+      return;
+    }
+    valorDolar = Finance.roundMoney(valorInformado / AppState.cotacao.rate);
+  }
+
+  const dados = { tipo, origem, data: dataISO, valorDolar, observacao };
 
   if (id) {
     Storage.updateLancamento(id, dados);
@@ -153,7 +164,7 @@ function handleTableClick(event) {
 
   if (action === 'edit') {
     const item = AppState.lancamentos.find((l) => l.id === id);
-    if (item) UI.fillFormForEdit(item);
+    if (item) UI.fillFormForEdit(item, AppState.cotacao);
     return;
   }
 
@@ -367,6 +378,9 @@ function handleSeedDiscard() {
 function bindEvents() {
   document.getElementById('lancamentoForm').addEventListener('submit', handleFormSubmit);
   document.getElementById('btnCancelEdit').addEventListener('click', handleCancelEdit);
+  document.getElementById('formOrigem').addEventListener('change', (event) => {
+    UI.updateValorFieldForOrigem(event.target.value);
+  });
 
   document.getElementById('lancamentosTableBody').addEventListener('click', handleTableClick);
   document.getElementById('lancamentosCards').addEventListener('click', handleTableClick);

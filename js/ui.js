@@ -236,13 +236,16 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
 
   const rate = cotacao ? cotacao.rate : 0;
 
-  // Ao visualizar apenas Missões, a coluna "Valor" passa a exibir Reais
-  // (moeda em que essas missões costumam ser acompanhadas) e "Convertido"
-  // passa a exibir o Dólar equivalente. Nos demais filtros mantém-se USD/BRL.
+  // Ao visualizar apenas Missões, as colunas "Valor" e "Saldo" passam a
+  // exibir Reais (moeda em que essas missões costumam ser recebidas) e
+  // "Convertido" passa a exibir o Dólar equivalente. Nos demais filtros
+  // mantém-se USD/BRL como padrão.
   const moedaPrincipal = options.moedaPrincipal === 'brl' ? 'brl' : 'usd';
   const thValor = document.getElementById('thValor');
+  const thSaldo = document.getElementById('thSaldo');
   const thConvertido = document.getElementById('thConvertido');
   if (thValor) thValor.textContent = moedaPrincipal === 'brl' ? 'Valor (R$)' : 'Valor';
+  if (thSaldo) thSaldo.textContent = moedaPrincipal === 'brl' ? 'Saldo (R$)' : 'Saldo';
   if (thConvertido) thConvertido.textContent = moedaPrincipal === 'brl' ? 'Convertido (US$)' : 'Convertido';
 
   lancamentosParaExibir.forEach((item) => {
@@ -251,6 +254,10 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
     const valorSecundario = moedaPrincipal === 'brl' ? item.valorDolar : convertido;
     const formatPrincipal = moedaPrincipal === 'brl' ? ExchangeRate.formatBrl : ExchangeRate.formatUsd;
     const formatSecundario = moedaPrincipal === 'brl' ? ExchangeRate.formatUsd : ExchangeRate.formatBrl;
+    const saldoFormatado =
+      moedaPrincipal === 'brl'
+        ? ExchangeRate.formatBrl(ExchangeRate.convertUsdToBrl(item.saldoAcumulado, rate))
+        : ExchangeRate.formatUsd(item.saldoAcumulado);
     const valorSinal = item.tipo === 'saque' ? '−' : '';
 
     // Linha da tabela (desktop)
@@ -274,7 +281,7 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
 
     const tdSaldo = document.createElement('td');
     tdSaldo.className = 'ta-right';
-    tdSaldo.textContent = ExchangeRate.formatUsd(item.saldoAcumulado);
+    tdSaldo.textContent = saldoFormatado;
     tr.appendChild(tdSaldo);
 
     const tdConvertido = document.createElement('td');
@@ -327,7 +334,7 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
 
     const cardMeta = document.createElement('div');
     cardMeta.className = 'entry-card__meta';
-    cardMeta.textContent = `Saldo: ${ExchangeRate.formatUsd(item.saldoAcumulado)} · ${formatSecundario(valorSecundario)} · ${
+    cardMeta.textContent = `Saldo: ${saldoFormatado} · ${formatSecundario(valorSecundario)} · ${
       item.tipo === 'ganho' ? 'Ganho' : 'Saque'
     }`;
 
@@ -368,12 +375,37 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
 
 // ---------- Formulário ----------
 
-UI.fillFormForEdit = function fillFormForEdit(item) {
+/**
+ * Ajusta o rótulo, placeholder e dica do campo "Valor recebido" conforme a
+ * origem selecionada: para Missões TikTok o campo aceita Real (convertido
+ * para dólar internamente); para as demais origens, aceita Dólar.
+ * @param {string} origem
+ */
+UI.updateValorFieldForOrigem = function updateValorFieldForOrigem(origem) {
+  const label = document.getElementById('formValorLabel');
+  const input = document.getElementById('formValor');
+  const hint = document.getElementById('formValorHint');
+  const isMissoes = origem === Finance.ORIGEM_MISSOES;
+
+  if (label) label.textContent = isMissoes ? 'Valor recebido (R$)' : 'Valor recebido (US$)';
+  if (input) input.placeholder = isMissoes ? '28,50' : '2,56';
+  if (hint) hint.classList.toggle('hidden', !isMissoes);
+};
+
+UI.fillFormForEdit = function fillFormForEdit(item, cotacao) {
   document.getElementById('formId').value = item.id;
   document.getElementById('formOrigem').value = item.origem;
+  UI.updateValorFieldForOrigem(item.origem);
+
   document.getElementById('formData').value = item.data;
   document.getElementById('formTipo').value = item.tipo;
-  document.getElementById('formValor').value = item.valorDolar.toFixed(2).replace('.', ',');
+
+  const isMissoes = item.origem === Finance.ORIGEM_MISSOES;
+  const rate = cotacao ? cotacao.rate : 0;
+  const valorExibido =
+    isMissoes && rate > 0 ? ExchangeRate.convertUsdToBrl(item.valorDolar, rate) : item.valorDolar;
+  document.getElementById('formValor').value = valorExibido.toFixed(2).replace('.', ',');
+
   document.getElementById('formObservacao').value = item.observacao || '';
   document.getElementById('formTitle').textContent = 'Editar lançamento';
   document.getElementById('btnSubmitForm').textContent = 'Salvar alterações';
@@ -388,6 +420,7 @@ UI.resetForm = function resetForm() {
   document.getElementById('formTitle').textContent = 'Novo lançamento';
   document.getElementById('btnSubmitForm').textContent = 'Adicionar lançamento';
   document.getElementById('btnCancelEdit').classList.add('hidden');
+  UI.updateValorFieldForOrigem(document.getElementById('formOrigem').value);
 };
 
 // ---------- Gráfico ----------

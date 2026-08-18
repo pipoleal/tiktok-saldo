@@ -202,8 +202,9 @@
       </div>
 
       <div class="form-field">
-        <label for="formValor">Valor recebido (US$)</label>
+        <label for="formValor" id="formValorLabel">Valor recebido (US$)</label>
         <input type="text" id="formValor" inputmode="decimal" placeholder="2,56" required />
+        <small id="formValorHint" class="hidden">Missões TikTok: informe o valor em Real. Convertemos para dólar automaticamente.</small>
       </div>
 
       <div class="form-field form-field--wide">
@@ -262,7 +263,7 @@
             <th>Origem</th>
             <th>Data</th>
             <th class="ta-right" id="thValor">Valor</th>
-            <th class="ta-right">Saldo</th>
+            <th class="ta-right" id="thSaldo">Saldo</th>
             <th class="ta-right" id="thConvertido">Convertido</th>
             <th>Tipo</th>
             <th>Ações</th>
