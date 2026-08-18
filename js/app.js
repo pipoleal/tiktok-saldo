@@ -67,7 +67,9 @@ function renderFilteredTable() {
   filtrados = Finance.sortChronological(filtrados);
   if (ordenacao === 'recentes') filtrados = filtrados.reverse();
 
-  UI.renderLancamentos(filtrados, AppState.cotacao);
+  // Ao filtrar por Missões, a tabela prioriza a exibição em Real (R$).
+  const moedaPrincipal = categoria === 'missoes' ? 'brl' : 'usd';
+  UI.renderLancamentos(filtrados, AppState.cotacao, { moedaPrincipal });
 }
 
 // ---------- Cotação ----------

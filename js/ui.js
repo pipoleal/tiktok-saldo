@@ -236,8 +236,21 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
 
   const rate = cotacao ? cotacao.rate : 0;
 
+  // Ao visualizar apenas Missões, a coluna "Valor" passa a exibir Reais
+  // (moeda em que essas missões costumam ser acompanhadas) e "Convertido"
+  // passa a exibir o Dólar equivalente. Nos demais filtros mantém-se USD/BRL.
+  const moedaPrincipal = options.moedaPrincipal === 'brl' ? 'brl' : 'usd';
+  const thValor = document.getElementById('thValor');
+  const thConvertido = document.getElementById('thConvertido');
+  if (thValor) thValor.textContent = moedaPrincipal === 'brl' ? 'Valor (R$)' : 'Valor';
+  if (thConvertido) thConvertido.textContent = moedaPrincipal === 'brl' ? 'Convertido (US$)' : 'Convertido';
+
   lancamentosParaExibir.forEach((item) => {
     const convertido = ExchangeRate.convertUsdToBrl(item.valorDolar, rate);
+    const valorPrincipal = moedaPrincipal === 'brl' ? convertido : item.valorDolar;
+    const valorSecundario = moedaPrincipal === 'brl' ? item.valorDolar : convertido;
+    const formatPrincipal = moedaPrincipal === 'brl' ? ExchangeRate.formatBrl : ExchangeRate.formatUsd;
+    const formatSecundario = moedaPrincipal === 'brl' ? ExchangeRate.formatUsd : ExchangeRate.formatBrl;
     const valorSinal = item.tipo === 'saque' ? '−' : '';
 
     // Linha da tabela (desktop)
@@ -256,7 +269,7 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
 
     const tdValor = document.createElement('td');
     tdValor.className = `ta-right ${item.tipo === 'saque' ? 'text-danger' : 'text-success'}`;
-    tdValor.textContent = `${valorSinal}${ExchangeRate.formatUsd(item.valorDolar)}`;
+    tdValor.textContent = `${valorSinal}${formatPrincipal(valorPrincipal)}`;
     tr.appendChild(tdValor);
 
     const tdSaldo = document.createElement('td');
@@ -266,7 +279,7 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
 
     const tdConvertido = document.createElement('td');
     tdConvertido.className = 'ta-right';
-    tdConvertido.textContent = ExchangeRate.formatBrl(convertido);
+    tdConvertido.textContent = formatSecundario(valorSecundario);
     tr.appendChild(tdConvertido);
 
     const tdTipo = document.createElement('td');
@@ -310,11 +323,11 @@ UI.renderLancamentos = function renderLancamentos(lancamentosParaExibir, cotacao
 
     const cardValue = document.createElement('div');
     cardValue.className = `entry-card__value ${item.tipo === 'saque' ? 'text-danger' : 'text-success'}`;
-    cardValue.textContent = `${valorSinal}${ExchangeRate.formatUsd(item.valorDolar)}`;
+    cardValue.textContent = `${valorSinal}${formatPrincipal(valorPrincipal)}`;
 
     const cardMeta = document.createElement('div');
     cardMeta.className = 'entry-card__meta';
-    cardMeta.textContent = `Saldo: ${ExchangeRate.formatUsd(item.saldoAcumulado)} · ${ExchangeRate.formatBrl(convertido)} · ${
+    cardMeta.textContent = `Saldo: ${ExchangeRate.formatUsd(item.saldoAcumulado)} · ${formatSecundario(valorSecundario)} · ${
       item.tipo === 'ganho' ? 'Ganho' : 'Saque'
     }`;
 

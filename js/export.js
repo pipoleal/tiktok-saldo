@@ -51,13 +51,27 @@ function exportJSON() {
  */
 function exportCSV() {
   const lancamentos = Finance.computeRunningBalances(Storage.getLancamentos());
-  const header = ['Tipo', 'Origem', 'Data', 'Valor (US$)', 'Saldo acumulado (US$)', 'Observacao'];
+  const cotacao = Storage.getCotacao();
+  const rate = cotacao ? cotacao.rate : 0;
+
+  const header = [
+    'Tipo',
+    'Origem',
+    'Data',
+    'Valor (US$)',
+    'Valor (R$)',
+    'Saldo acumulado (US$)',
+    'Saldo acumulado (R$)',
+    'Observacao',
+  ];
   const linhas = lancamentos.map((l) => [
     l.tipo === 'ganho' ? 'Ganho' : 'Saque',
     l.origem,
     ExchangeRate.formatDateBr(l.data),
     l.valorDolar.toFixed(2).replace('.', ','),
+    ExchangeRate.convertUsdToBrl(l.valorDolar, rate).toFixed(2).replace('.', ','),
     l.saldoAcumulado.toFixed(2).replace('.', ','),
+    ExchangeRate.convertUsdToBrl(l.saldoAcumulado, rate).toFixed(2).replace('.', ','),
     (l.observacao || '').replace(/[\r\n]+/g, ' '),
   ]);
 
