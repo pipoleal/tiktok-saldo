@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Controle de Saldo — TikTok Lives</title>
+<meta name="description" content="Controle financeiro de ganhos e saques de lives e missões do TikTok." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💰</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+<header class="app-header">
+  <div class="app-header__inner">
+    <div class="app-header__brand">
+      <span class="app-header__logo" aria-hidden="true">💰</span>
+      <div>
+        <h1>Controle de Saldo</h1>
+        <p>Lives &amp; missões do TikTok</p>
+      </div>
+    </div>
+    <div class="app-header__actions">
+      <button id="btnThemeToggle" class="icon-btn" type="button" title="Alternar tema" aria-label="Alternar tema claro/escuro">🌙</button>
+      <button id="btnSettings" class="icon-btn" type="button" title="Configurações" aria-label="Abrir configurações">⚙️</button>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- Banner de dados de exemplo -->
+  <section id="seedBanner" class="banner banner--info hidden">
+    <p><strong>Dados de exemplo carregados.</strong> Estes valores são apenas ilustrativos. Confirme para tratá-los como reais ou descarte para começar do zero.</p>
+    <div class="banner__actions">
+      <button id="btnSeedConfirm" class="btn btn--primary btn--sm" type="button">Usar como dados reais</button>
+      <button id="btnSeedDiscard" class="btn btn--ghost btn--sm" type="button">Descartar e começar vazio</button>
+    </div>
+  </section>
+
+  <!-- Aviso de cotação -->
+  <section id="rateWarning" class="banner banner--warning hidden">
+    <p id="rateWarningText"></p>
+  </section>
+
+  <!-- Saldo principal -->
+  <section class="hero-balance">
+    <span class="hero-balance__label">Saldo atual</span>
+    <span id="heroBalanceUsd" class="hero-balance__usd">US$ 0,00</span>
+    <span id="heroBalanceBrl" class="hero-balance__brl">R$ 0,00</span>
+  </section>
+
+  <!-- Cotação -->
+  <section class="rate-bar">
+    <div class="rate-bar__info">
+      <span class="rate-bar__label">Cotação do dólar</span>
+      <span id="rateValue" class="rate-bar__value">US$ 1 = R$ —</span>
+      <span id="rateUpdatedAt" class="rate-bar__updated">Última atualização: —</span>
+    </div>
+    <button id="btnRefreshRate" class="btn btn--outline btn--sm" type="button">🔄 Atualizar cotação</button>
+  </section>
+
+  <!-- Cards do dashboard -->
+  <section class="cards-grid" aria-label="Indicadores gerais">
+    <div class="card">
+      <span class="card__label">Total recebido</span>
+      <span id="cardTotalRecebido" class="card__value">US$ 0,00</span>
+    </div>
+    <div class="card">
+      <span class="card__label">TikTok Lives</span>
+      <span id="cardTotalTikTok" class="card__value">US$ 0,00</span>
+    </div>
+    <div class="card">
+      <span class="card__label">Missões</span>
+      <span id="cardTotalMissoes" class="card__value">US$ 0,00</span>
+    </div>
+    <div class="card">
+      <span class="card__label">Total sacado</span>
+      <span id="cardTotalSacado" class="card__value">US$ 0,00</span>
+    </div>
+    <div class="card card--highlight">
+      <span class="card__label">Saldo disponível</span>
+      <span id="cardSaldoDisponivel" class="card__value">US$ 0,00</span>
+      <span id="cardSaldoDisponivelBrl" class="card__subvalue">R$ 0,00</span>
+    </div>
+  </section>
+
+  <!-- Metas -->
+  <section class="section">
+    <h2 class="section__title">Metas</h2>
+    <div class="goals-grid">
+      <div class="goal-card">
+        <div class="goal-card__header">
+          <span>Meta principal</span>
+          <span id="goalPrincipalPercent">0%</span>
+        </div>
+        <div class="progress-bar"><div id="goalPrincipalBar" class="progress-bar__fill"></div></div>
+        <div class="goal-card__footer">
+          <span id="goalPrincipalText">US$ 0,00 / US$ 7.000,00</span>
+          <span id="goalPrincipalFalta">Faltam US$ 7.000,00</span>
+        </div>
+      </div>
+
+      <div class="goal-card">
+        <div class="goal-card__header">
+          <span>Meta secundária (equivalente em reais)</span>
+          <span id="goalSecundariaPercent">0%</span>
+        </div>
+        <div class="progress-bar"><div id="goalSecundariaBar" class="progress-bar__fill"></div></div>
+        <div class="goal-card__footer">
+          <span id="goalSecundariaText">US$ 0,00 / US$ 40.000,00</span>
+          <span id="goalSecundariaFalta">Faltam US$ 40.000,00</span>
+        </div>
+      </div>
+
+      <div class="goal-card">
+        <div class="goal-card__header">
+          <span>Meta semanal</span>
+          <span id="goalSemanalPercent">0%</span>
+        </div>
+        <div class="progress-bar"><div id="goalSemanalBar" class="progress-bar__fill"></div></div>
+        <div class="goal-card__footer">
+          <span id="goalSemanalText">US$ 0,00 / US$ 40.000,00</span>
+          <span id="goalSemanalFalta">Faltam US$ 40.000,00</span>
+        </div>
+        <div class="goal-card__extra">
+          <span>Média diária: <strong id="goalSemanalMedia">US$ 0,00</strong></span>
+          <button id="btnEditMetaSemanal" class="link-btn" type="button">Alterar meta semanal</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Saques -->
+  <section class="section">
+    <h2 class="section__title">Valores sacados</h2>
+    <div class="goals-grid">
+      <div class="goal-card">
+        <div class="goal-card__header">
+          <span>Meta de saque</span>
+          <span id="goalSaqueMetaPercent">0%</span>
+        </div>
+        <div class="progress-bar"><div id="goalSaqueMetaBar" class="progress-bar__fill"></div></div>
+        <div class="goal-card__footer">
+          <span id="goalSaqueMetaText">US$ 0,00 / US$ 450,00</span>
+          <span id="goalSaqueMetaBrl">R$ 0,00</span>
+        </div>
+      </div>
+      <div class="goal-card">
+        <div class="goal-card__header">
+          <span>Meta maior de saque</span>
+          <span id="goalSaqueMaiorPercent">0%</span>
+        </div>
+        <div class="progress-bar"><div id="goalSaqueMaiorBar" class="progress-bar__fill"></div></div>
+        <div class="goal-card__footer">
+          <span id="goalSaqueMaiorText">US$ 0,00 / US$ 2.500,00</span>
+          <span id="goalSaqueMaiorBrl">R$ 0,00</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Gráfico -->
+  <section class="section">
+    <h2 class="section__title">Evolução dos ganhos por dia</h2>
+    <div class="chart-wrap">
+      <canvas id="earningsChart" height="90"></canvas>
+    </div>
+  </section>
+
+  <!-- Formulário -->
+  <section class="section">
+    <h2 class="section__title" id="formTitle">Novo lançamento</h2>
+    <form id="lancamentoForm" class="form-grid" novalidate>
+      <input type="hidden" id="formId" value="" />
+
+      <div class="form-field">
+        <label for="formOrigem">Origem</label>
+        <select id="formOrigem" required></select>
+      </div>
+
+      <div class="form-field">
+        <label for="formNovaCategoria">Nova categoria (opcional)</label>
+        <input type="text" id="formNovaCategoria" placeholder="Ex: PIX PARCERIA" maxlength="40" />
+      </div>
+
+      <div class="form-field">
+        <label for="formData">Data</label>
+        <input type="date" id="formData" required />
+      </div>
+
+      <div class="form-field">
+        <label for="formTipo">Tipo</label>
+        <select id="formTipo" required>
+          <option value="ganho">Ganho</option>
+          <option value="saque">Saque</option>
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="formValor">Valor recebido (US$)</label>
+        <input type="text" id="formValor" inputmode="decimal" placeholder="2,56" required />
+      </div>
+
+      <div class="form-field form-field--wide">
+        <label for="formObservacao">Observação (opcional)</label>
+        <input type="text" id="formObservacao" maxlength="140" placeholder="Ex: live das 20h" />
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" id="btnSubmitForm" class="btn btn--primary">Adicionar lançamento</button>
+        <button type="button" id="btnCancelEdit" class="btn btn--ghost hidden">Cancelar edição</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Filtros -->
+  <section class="section">
+    <h2 class="section__title">Lançamentos</h2>
+
+    <div class="filters">
+      <div class="filters__group" role="group" aria-label="Filtrar por categoria">
+        <button class="chip is-active" data-filter-categoria="todos" type="button">Todos</button>
+        <button class="chip" data-filter-categoria="tiktok" type="button">TikTok</button>
+        <button class="chip" data-filter-categoria="missoes" type="button">Missões</button>
+        <button class="chip" data-filter-categoria="saques" type="button">Saques</button>
+      </div>
+
+      <div class="filters__group">
+        <select id="filterPeriodo" aria-label="Filtrar por período">
+          <option value="todos">Todo o período</option>
+          <option value="hoje">Hoje</option>
+          <option value="semana">Esta semana</option>
+          <option value="mes">Este mês</option>
+          <option value="personalizado">Personalizado</option>
+        </select>
+        <input type="date" id="filterInicio" class="hidden" aria-label="Data inicial" />
+        <input type="date" id="filterFim" class="hidden" aria-label="Data final" />
+      </div>
+
+      <div class="filters__group">
+        <select id="filterOrdenacao" aria-label="Ordenar lançamentos">
+          <option value="recentes">Mais recentes primeiro</option>
+          <option value="antigos">Mais antigos primeiro</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="emptyState" class="empty-state hidden">
+      <p><strong>Nenhum lançamento registrado.</strong></p>
+      <p>Adicione seu primeiro ganho para começar a acompanhar suas metas.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table id="lancamentosTable" class="data-table hidden">
+        <thead>
+          <tr>
+            <th>Origem</th>
+            <th>Data</th>
+            <th class="ta-right">Valor</th>
+            <th class="ta-right">Saldo</th>
+            <th class="ta-right">Convertido</th>
+            <th>Tipo</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="lancamentosTableBody"></tbody>
+      </table>
+    </div>
+
+    <div id="lancamentosCards" class="cards-list"></div>
+  </section>
+
+  <!-- Backup -->
+  <section class="section">
+    <h2 class="section__title">Backup e dados</h2>
+    <div class="backup-actions">
+      <button id="btnExportJSON" class="btn btn--outline" type="button">⬇️ Exportar JSON</button>
+      <button id="btnExportCSV" class="btn btn--outline" type="button">⬇️ Exportar CSV</button>
+      <button id="btnImportJSON" class="btn btn--outline" type="button">⬆️ Importar backup</button>
+      <input type="file" id="fileImportInput" accept="application/json" class="hidden" />
+      <button id="btnClearAll" class="btn btn--danger" type="button">🗑️ Limpar todos os dados</button>
+    </div>
+  </section>
+
+</main>
+
+<footer class="app-footer">
+  <p>Funciona 100% no seu navegador. Nenhum dado é enviado para servidores externos.</p>
+</footer>
+
+<!-- Modal: Configurações -->
+<div id="settingsModal" class="modal-overlay hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle">
+    <div class="modal__header">
+      <h3 id="settingsModalTitle">Configurações</h3>
+      <button class="icon-btn" type="button" data-close-modal="settingsModal" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal__body">
+      <form id="settingsForm">
+        <div class="form-field">
+          <label for="cfgMetaPrincipal">Meta principal (US$)</label>
+          <input type="text" id="cfgMetaPrincipal" inputmode="decimal" />
+        </div>
+        <div class="form-field">
+          <label for="cfgMetaSecundaria">Meta secundária (US$)</label>
+          <input type="text" id="cfgMetaSecundaria" inputmode="decimal" />
+        </div>
+        <div class="form-field">
+          <label for="cfgMetaSemanal">Meta semanal (US$)</label>
+          <input type="text" id="cfgMetaSemanal" inputmode="decimal" />
+        </div>
+        <div class="form-field">
+          <label for="cfgMetaSaque">Meta de saque (US$)</label>
+          <input type="text" id="cfgMetaSaque" inputmode="decimal" />
+        </div>
+        <div class="form-field">
+          <label for="cfgMetaSaqueSecundaria">Meta maior de saque (US$)</label>
+          <input type="text" id="cfgMetaSaqueSecundaria" inputmode="decimal" />
+        </div>
+        <div class="form-field">
+          <label for="cfgCotacaoManual">Cotação manual (R$ por US$1) — opcional</label>
+          <input type="text" id="cfgCotacaoManual" inputmode="decimal" placeholder="Ex: 5,40" />
+          <small>Usada apenas quando a API de cotação estiver indisponível e não houver cotação salva.</small>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn btn--primary">Salvar configurações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: cotação manual obrigatória (primeira vez, sem API e sem cache) -->
+<div id="manualRateModal" class="modal-overlay hidden">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="manualRateModalTitle">
+    <div class="modal__header">
+      <h3 id="manualRateModalTitle">Informe a cotação do dólar</h3>
+    </div>
+    <div class="modal__body">
+      <p>Não foi possível buscar a cotação automaticamente e ainda não há nenhuma cotação salva. Informe o valor atual de US$ 1 em reais para continuar.</p>
+      <div class="form-field">
+        <label for="manualRateInput">US$ 1 =</label>
+        <input type="text" id="manualRateInput" inputmode="decimal" placeholder="5,40" />
+      </div>
+      <div class="form-actions">
+        <button id="btnManualRateSave" class="btn btn--primary" type="button">Salvar cotação</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: confirmação genérica -->
+<div id="confirmModal" class="modal-overlay hidden">
+  <div class="modal modal--sm" role="alertdialog" aria-modal="true" aria-labelledby="confirmModalTitle">
+    <div class="modal__header">
+      <h3 id="confirmModalTitle">Confirmar ação</h3>
+    </div>
+    <div class="modal__body">
+      <p id="confirmModalText">Tem certeza?</p>
+      <div class="form-actions">
+        <button id="confirmModalOk" class="btn btn--danger" type="button">Confirmar</button>
+        <button id="confirmModalCancel" class="btn btn--ghost" type="button">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="js/finance.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/exchange-rate.js"></script>
+<script src="js/export.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
