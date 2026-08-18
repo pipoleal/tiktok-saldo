@@ -64,16 +64,26 @@ function exportCSV() {
     'Saldo acumulado (R$)',
     'Observacao',
   ];
-  const linhas = lancamentos.map((l) => [
-    l.tipo === 'ganho' ? 'Ganho' : 'Saque',
-    l.origem,
-    ExchangeRate.formatDateBr(l.data),
-    l.valorDolar.toFixed(2).replace('.', ','),
-    ExchangeRate.convertUsdToBrl(l.valorDolar, rate).toFixed(2).replace('.', ','),
-    l.saldoAcumulado.toFixed(2).replace('.', ','),
-    ExchangeRate.convertUsdToBrl(l.saldoAcumulado, rate).toFixed(2).replace('.', ','),
-    (l.observacao || '').replace(/[\r\n]+/g, ' '),
-  ]);
+  const linhas = lancamentos.map((l) => {
+    // Missões TikTok são registradas em Real e nunca convertidas: não têm
+    // equivalente em dólar nem participam do saldo acumulado em dólar.
+    const isMissao = l.origem === Finance.ORIGEM_MISSOES;
+    const valorUsd = isMissao ? '' : l.valorDolar.toFixed(2).replace('.', ',');
+    const valorBrl = isMissao
+      ? l.valorDolar.toFixed(2).replace('.', ',')
+      : ExchangeRate.convertUsdToBrl(l.valorDolar, rate).toFixed(2).replace('.', ',');
+
+    return [
+      l.tipo === 'ganho' ? 'Ganho' : 'Saque',
+      l.origem,
+      ExchangeRate.formatDateBr(l.data),
+      valorUsd,
+      valorBrl,
+      l.saldoAcumulado.toFixed(2).replace('.', ','),
+      ExchangeRate.convertUsdToBrl(l.saldoAcumulado, rate).toFixed(2).replace('.', ','),
+      (l.observacao || '').replace(/[\r\n]+/g, ' '),
+    ];
+  });
 
   const escapeCsv = (value) => {
     const str = String(value);

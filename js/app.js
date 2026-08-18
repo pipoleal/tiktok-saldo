@@ -67,9 +67,7 @@ function renderFilteredTable() {
   filtrados = Finance.sortChronological(filtrados);
   if (ordenacao === 'recentes') filtrados = filtrados.reverse();
 
-  // Ao filtrar por Missões, a tabela prioriza a exibição em Real (R$).
-  const moedaPrincipal = categoria === 'missoes' ? 'brl' : 'usd';
-  UI.renderLancamentos(filtrados, AppState.cotacao, { moedaPrincipal });
+  UI.renderLancamentos(filtrados, AppState.cotacao);
 }
 
 // ---------- Cotação ----------
@@ -124,18 +122,9 @@ function handleFormSubmit(event) {
     }
   }
 
-  // Missões TikTok são digitadas em Real; convertemos para dólar na hora de
-  // salvar, já que o dólar continua sendo a única moeda de referência interna.
-  let valorDolar = valorInformado;
-  if (origem === Finance.ORIGEM_MISSOES) {
-    if (!AppState.cotacao || !AppState.cotacao.rate) {
-      UI.showToast('Não é possível converter Real para Dólar sem uma cotação. Configure uma cotação primeiro.', 'error');
-      return;
-    }
-    valorDolar = Finance.roundMoney(valorInformado / AppState.cotacao.rate);
-  }
-
-  const dados = { tipo, origem, data: dataISO, valorDolar, observacao };
+  // O valor é salvo exatamente como informado, na moeda nativa da origem:
+  // Dólar para TikTok/Outro, Real para Missões TikTok. Nunca é convertido.
+  const dados = { tipo, origem, data: dataISO, valorDolar: valorInformado, observacao };
 
   if (id) {
     Storage.updateLancamento(id, dados);
@@ -164,7 +153,7 @@ function handleTableClick(event) {
 
   if (action === 'edit') {
     const item = AppState.lancamentos.find((l) => l.id === id);
-    if (item) UI.fillFormForEdit(item, AppState.cotacao);
+    if (item) UI.fillFormForEdit(item);
     return;
   }
 

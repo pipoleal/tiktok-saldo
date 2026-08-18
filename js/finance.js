@@ -44,8 +44,13 @@ function sortChronological(lancamentos) {
 }
 
 /**
- * Calcula o saldo acumulado (running balance) para cada lançamento em ordem cronológica.
- * Ganhos somam, saques subtraem.
+ * Calcula o saldo acumulado (running balance), em Dólar, para cada lançamento
+ * em ordem cronológica. Ganhos somam, saques subtraem.
+ *
+ * Missões TikTok são registradas em Real e NUNCA são convertidas — portanto
+ * não entram nesta soma em dólar (delta = 0). O campo saldoAcumulado de uma
+ * linha de Missões apenas carrega o saldo em dólar como estava até ali, sem
+ * ser afetado por ela.
  * @param {Array} lancamentos
  * @returns {Array} lançamentos com propriedade saldoAcumulado adicionada (não muta originais)
  */
@@ -53,19 +58,23 @@ function computeRunningBalances(lancamentos) {
   const ordenados = sortChronological(lancamentos);
   let saldo = 0;
   return ordenados.map((item) => {
-    const delta = item.tipo === 'saque' ? -item.valorDolar : item.valorDolar;
+    let delta = 0;
+    if (item.origem !== ORIGEM_MISSOES) {
+      delta = item.tipo === 'saque' ? -item.valorDolar : item.valorDolar;
+    }
     saldo = roundMoney(saldo + delta);
     return { ...item, saldoAcumulado: saldo };
   });
 }
 
 /**
- * Calcula o saldo disponível total (ganhos - saques).
+ * Calcula o saldo disponível total em Dólar (ganhos - saques).
+ * Missões TikTok (Real, sem conversão) não entram nesta conta.
  * @param {Array} lancamentos
  * @returns {number}
  */
 function calculateBalance(lancamentos) {
-  const ganhos = lancamentos.filter((l) => l.tipo === 'ganho');
+  const ganhos = lancamentos.filter((l) => l.tipo === 'ganho' && l.origem !== ORIGEM_MISSOES);
   const saques = lancamentos.filter((l) => l.tipo === 'saque');
   const totalGanhos = sumMoney(ganhos.map((l) => l.valorDolar));
   const totalSaques = sumMoney(saques.map((l) => l.valorDolar));
@@ -74,6 +83,10 @@ function calculateBalance(lancamentos) {
 
 /**
  * Calcula todos os totais usados no dashboard.
+ *
+ * Missões TikTok são valores em Real (BRL) e nunca são convertidos para
+ * dólar — por isso ficam de fora do saldo/metas em dólar e aparecem à parte,
+ * em totalMissoesBrl.
  * @param {Array} lancamentos
  * @returns {object}
  */
@@ -81,24 +94,23 @@ function getTotals(lancamentos) {
   const ganhos = lancamentos.filter((l) => l.tipo === 'ganho');
   const saques = lancamentos.filter((l) => l.tipo === 'saque');
 
+  const ganhosUsd = ganhos.filter((l) => l.origem !== ORIGEM_MISSOES);
+  const ganhosMissoes = ganhos.filter((l) => l.origem === ORIGEM_MISSOES);
+
   const totalTikTok = sumMoney(
-    ganhos.filter((l) => l.origem === ORIGEM_TIKTOK).map((l) => l.valorDolar)
-  );
-  const totalMissoes = sumMoney(
-    ganhos.filter((l) => l.origem === ORIGEM_MISSOES).map((l) => l.valorDolar)
+    ganhosUsd.filter((l) => l.origem === ORIGEM_TIKTOK).map((l) => l.valorDolar)
   );
   const totalOutros = sumMoney(
-    ganhos
-      .filter((l) => l.origem !== ORIGEM_TIKTOK && l.origem !== ORIGEM_MISSOES)
-      .map((l) => l.valorDolar)
+    ganhosUsd.filter((l) => l.origem !== ORIGEM_TIKTOK).map((l) => l.valorDolar)
   );
-  const totalGanhos = sumMoney(ganhos.map((l) => l.valorDolar));
+  const totalMissoesBrl = sumMoney(ganhosMissoes.map((l) => l.valorDolar));
+  const totalGanhos = sumMoney(ganhosUsd.map((l) => l.valorDolar));
   const totalSaques = sumMoney(saques.map((l) => l.valorDolar));
   const saldoDisponivel = roundMoney(totalGanhos - totalSaques);
 
   return {
     totalTikTok,
-    totalMissoes,
+    totalMissoesBrl,
     totalOutros,
     totalGanhos,
     totalSaques,
@@ -133,7 +145,9 @@ function toISODate(date) {
 }
 
 /**
- * Calcula o total de ganhos da semana atual (segunda a domingo).
+ * Calcula o total de ganhos em Dólar da semana atual (segunda a domingo).
+ * Missões TikTok (Real, sem conversão) não entram nesta soma, já que a meta
+ * semanal é expressa em dólar.
  * @param {Array} lancamentos
  * @param {Date} referencia
  * @returns {{total: number, weekStart: string, weekEnd: string, days: number}}
@@ -146,7 +160,11 @@ function calculateWeeklyTotal(lancamentos, referencia = new Date()) {
   const weekEnd = toISODate(weekEndDate);
 
   const doSemana = lancamentos.filter(
-    (l) => l.tipo === 'ganho' && l.data >= weekStart && l.data <= weekEnd
+    (l) =>
+      l.tipo === 'ganho' &&
+      l.origem !== ORIGEM_MISSOES &&
+      l.data >= weekStart &&
+      l.data <= weekEnd
   );
   const total = sumMoney(doSemana.map((l) => l.valorDolar));
 
@@ -170,12 +188,14 @@ function calculateGoalProgress(atual, meta) {
 }
 
 /**
- * Agrupa ganhos por data (ISO) somando valores, útil para gráfico de evolução.
+ * Agrupa ganhos em Dólar por data (ISO) somando valores, útil para o gráfico
+ * de evolução. Missões TikTok (Real, sem conversão) não entram aqui, pois o
+ * gráfico é expresso em dólar.
  * @param {Array} lancamentos
  * @returns {Array<{data: string, total: number}>} ordenado por data crescente
  */
 function groupGanhosPorDia(lancamentos) {
-  const ganhos = lancamentos.filter((l) => l.tipo === 'ganho');
+  const ganhos = lancamentos.filter((l) => l.tipo === 'ganho' && l.origem !== ORIGEM_MISSOES);
   const mapa = new Map();
   ganhos.forEach((l) => {
     const atual = mapa.get(l.data) || 0;
