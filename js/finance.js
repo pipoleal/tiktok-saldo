@@ -207,6 +207,24 @@ function groupGanhosPorDia(lancamentos) {
 }
 
 /**
+ * Agrupa Missões TikTok em Real por data (ISO) somando valores, para exibir
+ * no gráfico de evolução em uma série separada da de Dólar (sem conversão).
+ * @param {Array} lancamentos
+ * @returns {Array<{data: string, total: number}>} ordenado por data crescente
+ */
+function groupMissoesPorDia(lancamentos) {
+  const missoes = lancamentos.filter((l) => l.tipo === 'ganho' && l.origem === ORIGEM_MISSOES);
+  const mapa = new Map();
+  missoes.forEach((l) => {
+    const atual = mapa.get(l.data) || 0;
+    mapa.set(l.data, roundMoney(atual + l.valorDolar));
+  });
+  return Array.from(mapa.entries())
+    .map(([data, total]) => ({ data, total }))
+    .sort((a, b) => (a.data < b.data ? -1 : a.data > b.data ? 1 : 0));
+}
+
+/**
  * Filtra lançamentos por período pré-definido.
  * @param {Array} lancamentos
  * @param {'hoje'|'semana'|'mes'|'personalizado'} periodo
@@ -281,6 +299,7 @@ window.Finance = {
   calculateWeeklyTotal,
   calculateGoalProgress,
   groupGanhosPorDia,
+  groupMissoesPorDia,
   filterByPeriod,
   filterByCategory,
 };

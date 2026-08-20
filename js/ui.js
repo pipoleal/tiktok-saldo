@@ -107,6 +107,11 @@ UI.renderDashboard = function renderDashboard({ lancamentos, cotacao, config }) 
   document.getElementById('heroBalanceBrl').textContent = ExchangeRate.formatBrl(
     ExchangeRate.convertUsdToBrl(totals.saldoDisponivel, rate)
   );
+  // Mostrados juntos, mas nunca somados: Dólar (TikTok/Outro) e Missões
+  // (Real) continuam sendo duas moedas separadas.
+  document.getElementById('heroCombinado').textContent = `Dólar + Missões: ${ExchangeRate.formatUsd(
+    totals.saldoDisponivel
+  )} + ${ExchangeRate.formatBrl(totals.totalMissoesBrl)}`;
 
   document.getElementById('cardTotalRecebido').textContent = ExchangeRate.formatUsd(totals.totalGanhos);
   document.getElementById('cardTotalTikTok').textContent = ExchangeRate.formatUsd(totals.totalTikTok);
@@ -417,23 +422,29 @@ UI.renderChart = function renderChart(lancamentos) {
   const canvas = document.getElementById('earningsChart');
   if (!canvas || typeof Chart === 'undefined') return;
 
-  const dados = Finance.groupGanhosPorDia(lancamentos).slice(-30);
-  const labels = dados.map((d) => ExchangeRate.formatDateBr(d.data));
-  const valores = dados.map((d) => d.total);
+  // TikTok (Dólar) e Missões (Real) são séries independentes, cada uma com
+  // seu próprio eixo — aparecem juntas no mesmo gráfico, mas nunca somadas
+  // ou convertidas uma na outra.
+  const dolarPorDia = Finance.groupGanhosPorDia(lancamentos);
+  const missoesPorDia = Finance.groupMissoesPorDia(lancamentos);
+
+  const datasSet = new Set([...dolarPorDia.map((d) => d.data), ...missoesPorDia.map((d) => d.data)]);
+  const datas = Array.from(datasSet).sort().slice(-30);
+
+  const dolarMap = new Map(dolarPorDia.map((d) => [d.data, d.total]));
+  const missoesMap = new Map(missoesPorDia.map((d) => [d.data, d.total]));
+
+  const labels = datas.map((d) => ExchangeRate.formatDateBr(d));
+  const valoresDolar = datas.map((d) => dolarMap.get(d) || 0);
+  const valoresMissoes = datas.map((d) => missoesMap.get(d) || 0);
 
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
   const textColor = isDark ? '#c7cad1' : '#5b616e';
 
   if (chartInstance) {
-    chartInstance.data.labels = labels;
-    chartInstance.data.datasets[0].data = valores;
-    chartInstance.options.scales.x.ticks.color = textColor;
-    chartInstance.options.scales.y.ticks.color = textColor;
-    chartInstance.options.scales.x.grid.color = gridColor;
-    chartInstance.options.scales.y.grid.color = gridColor;
-    chartInstance.update();
-    return;
+    chartInstance.destroy();
+    chartInstance = null;
   }
 
   chartInstance = new Chart(canvas.getContext('2d'), {
@@ -442,11 +453,20 @@ UI.renderChart = function renderChart(lancamentos) {
       labels,
       datasets: [
         {
-          label: 'Ganhos (US$)',
-          data: valores,
+          label: 'TikTok (US$)',
+          data: valoresDolar,
           backgroundColor: '#6c5ce7',
           borderRadius: 6,
-          maxBarThickness: 36,
+          maxBarThickness: 28,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Missões (R$)',
+          data: valoresMissoes,
+          backgroundColor: '#17a673',
+          borderRadius: 6,
+          maxBarThickness: 28,
+          yAxisID: 'y1',
         },
       ],
     },
@@ -454,20 +474,37 @@ UI.renderChart = function renderChart(lancamentos) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: { display: true, labels: { color: textColor } },
         tooltip: {
           callbacks: {
-            label: (ctx) => ExchangeRate.formatUsd(ctx.parsed.y),
+            label: (ctx) =>
+              `${ctx.dataset.label}: ${
+                ctx.dataset.yAxisID === 'y1'
+                  ? ExchangeRate.formatBrl(ctx.parsed.y)
+                  : ExchangeRate.formatUsd(ctx.parsed.y)
+              }`,
           },
         },
       },
       scales: {
         x: { grid: { color: gridColor }, ticks: { color: textColor } },
         y: {
+          type: 'linear',
+          position: 'left',
           grid: { color: gridColor },
           ticks: {
             color: textColor,
             callback: (value) => ExchangeRate.formatUsd(value),
+          },
+          beginAtZero: true,
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          grid: { display: false },
+          ticks: {
+            color: textColor,
+            callback: (value) => ExchangeRate.formatBrl(value),
           },
           beginAtZero: true,
         },
