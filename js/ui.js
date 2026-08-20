@@ -107,11 +107,18 @@ UI.renderDashboard = function renderDashboard({ lancamentos, cotacao, config }) 
   document.getElementById('heroBalanceBrl').textContent = ExchangeRate.formatBrl(
     ExchangeRate.convertUsdToBrl(totals.saldoDisponivel, rate)
   );
-  // Mostrados juntos, mas nunca somados: Dólar (TikTok/Outro) e Missões
-  // (Real) continuam sendo duas moedas separadas.
+  // Mostrados juntos, mas nunca somados no dado bruto: Dólar (TikTok/Outro)
+  // e Missões (Real) continuam sendo duas moedas separadas no restante do
+  // app. Este "Total" é só um resumo derivado, convertendo o saldo em
+  // dólar para real (na cotação atual) e somando com as Missões.
   document.getElementById('heroCombinado').textContent = `Dólar + Missões: ${ExchangeRate.formatUsd(
     totals.saldoDisponivel
   )} + ${ExchangeRate.formatBrl(totals.totalMissoesBrl)}`;
+
+  const totalCombinadoBrl = Finance.roundMoney(
+    ExchangeRate.convertUsdToBrl(totals.saldoDisponivel, rate) + totals.totalMissoesBrl
+  );
+  document.getElementById('heroTotalCombinado').textContent = `Total: ${ExchangeRate.formatBrl(totalCombinadoBrl)}`;
 
   document.getElementById('cardTotalRecebido').textContent = ExchangeRate.formatUsd(totals.totalGanhos);
   document.getElementById('cardTotalTikTok').textContent = ExchangeRate.formatUsd(totals.totalTikTok);
